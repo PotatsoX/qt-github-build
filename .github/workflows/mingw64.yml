@@ -1,0 +1,61 @@
+name: mingw64
+
+env:
+  targetName: qt-github-build.exe
+  
+  qt_ver:    "5.15.0"
+  qt_target: desktop
+  qt_arch:   "win64_mingw81"
+  
+on: 
+  push:
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'      
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'LICENSE'    
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v2.6.2
+      with:
+        version: ${{ env.qt_ver }}
+        arch: ${{ env.qt_arch }}
+        extra: --external 7z
+
+    - uses: actions/checkout@v1
+
+    - name: Run QMake
+      run: qmake qt-github-build.pro -spec win32-g++ "CONFIG+=qtquickcompiler"
+        
+    - name: Make mingw32
+      run: mingw32-make -j8
+      
+    # tag 打包
+    - name: package
+      #if: startsWith(github.event.ref, 'refs/tags/')
+      env:
+        archiveName: ${{ env.qt_ver }}-${{ env.qt_target }}-${{ env.qt_arch }}
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory ${env:archiveName}
+        Copy-Item release\${env:targetName} ${env:archiveName}\
+        windeployqt --qmldir=${env:Qt5_Dir}\qml  ${env:archiveName}\${env:targetName}
+        Copy-Item ${env:Qt5_Dir}\bin\libstdc*.dll ${env:archiveName}\
+        Copy-Item ${env:Qt5_Dir}\bin\libwinpthread*.dll ${env:archiveName}\
+        Copy-Item ${env:Qt5_Dir}\bin\libgcc*.dll ${env:archiveName}\
+        Compress-Archive -Path ${env:archiveName} ${env:archiveName}'.zip'
+        $name = ${env:archiveName}
+        echo "::set-env name=packageName::$name"
+          
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: ${{env.packageName}}.zip
+        path: ${{env.packageName}}.zip
