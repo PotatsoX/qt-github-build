@@ -3,7 +3,7 @@ name: mingw32
 env:
   targetName: qt-github-build.exe
   
-  qt_ver:    "5.15.0"
+  qt_ver:    "5.15.2"
   qt_target: desktop
   qt_arch:   "win32_mingw81"
 
